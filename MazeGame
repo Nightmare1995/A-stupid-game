@@ -1,0 +1,1001 @@
+// 猫抓老鼠.cpp : 定义控制台应用程序的入口点。
+//
+
+#include "stdafx.h"
+#include <iostream>
+#include <conio.h>
+#include <windows.h>
+#include <time.h>
+#include<math.h>
+#include<iomanip>
+using namespace std;
+
+
+void change();//老鼠移动的判定以及产生的数组变化
+void initmaze(int,int);//初始化迷宫
+void showtitle();//显示主菜单
+void taowang(int,int);//逃亡模式函数声明
+void zoumigong(int,int);// 走迷宫关卡函数声明
+void choosemaze();//选择迷宫模式界面函数声明，给前两个模式用
+void shengcun();//生存模式
+
+int dongshu=0;//记录老鼠挖的洞的数量
+int cathp=500,mousehp=300;//猫和老鼠的体力值
+int foodx=0,foody=0;//食物的坐标
+
+const int WIDTH=40;//宽
+const int HEIGHT=40;//高
+const int MAXSIZE=WIDTH*HEIGHT;//队列最大值
+const int gwall=35,groad=32,gcat=1,gmouse=2,gdoor=4,gfood=3;//作为游戏里显示的字符
+int x=1,y=1;//用来作媒介变换迷宫数组，给老鼠用
+
+bool movable(int,int,int,int);//用于探测是否有路径的函数
+bool tw=false;//开启则表示迷宫初始函数是给逃亡关卡用的
+bool chuangguan=false;//如果开启则表示选择的是逃亡的闯关模式
+bool dong=false;//表示老鼠是否挖洞
+bool shiwu=false;//true表示有食物
+bool end=false;//游戏结束标志
+bool win=false;//游戏胜利标志
+bool tance=false;//用于改变move函数是否只用于探测有无路径的开关
+
+
+
+
+
+void setcolor(unsigned short ForeColor,unsigned short BackGroundColor)//改变字体颜色的函数
+     // 0--黑  1--暗蓝 2--暗绿  3--暗青  4--暗红  5--暗紫 6--蟹黄  7--暗白
+     // 8--灰  9--亮蓝 10-亮绿  11-亮青  12-亮红  13-亮紫 14-黄    15-亮白
+{
+      //获得缓冲区句柄 
+  HANDLE hCon = GetStdHandle(STD_OUTPUT_HANDLE); 
+      //设置文本及背景颜色
+  SetConsoleTextAttribute(hCon,(ForeColor%16)|(BackGroundColor%16*16));
+};
+
+
+
+
+
+
+class Maze
+{
+public:
+	Maze();
+void display(int,int);
+int m[HEIGHT][WIDTH];//迷宫数组
+int dx;//出口的x坐标
+int dy;//出口的y坐标
+}maze;
+
+Maze::Maze()//构造函数，生成边框
+{
+
+dx=0,dy=9;
+for(int i=0;i<HEIGHT;i++)
+   for(int j=0;j<WIDTH;j++)
+    {    if(i==0||i==HEIGHT-1||j==0||j==WIDTH-1)
+	     m[i][j]=gwall;
+         else
+             m[i][j]=groad;
+   }
+};
+
+void Maze::display(int mx,int my)//显示迷宫
+{
+	
+	for(int i=0;i<mx;i++)
+	{
+		for(int j=0;j<my;j++)
+			{
+                            if(m[i][j]==groad) cout<<(char)groad<<' ';
+                            else if(m[i][j]==gwall) cout<<(char)gwall<<' ';
+							else if(m[i][j]==gdoor) {setcolor(11,0);cout<<(char)gdoor<<' ';setcolor(7,0);}
+							else if(m[i][j]==gcat) {setcolor(12,0);cout<<(char)gcat<<' ';setcolor(7,0);}
+							else if(m[i][j]==gmouse) {setcolor(9,0);cout<<(char)gmouse<<' ';setcolor(7,0);}
+							else if(m[i][j]==gfood) {setcolor(11,0);cout<<(char)gfood<<' ';setcolor(7,0);}
+							else ;
+                          }
+		cout<<endl;
+	}
+};
+
+//-------------------------老鼠的类--------------------------------
+class Mouse
+{
+public:
+int xe;
+int ye;
+Mouse();
+bool up();//用于老鼠的移动
+bool down();
+bool left();
+bool right();
+}mouse;
+
+Mouse::Mouse()//初始化老鼠位置
+{xe=14;ye=14;};
+
+
+bool Mouse::up()//向上移动
+{
+	if(maze.m[xe-1][ye]!=gwall)
+{
+	if(shiwu==true)
+	{
+	if(maze.m[xe-1][ye]==gfood)
+	{
+		mousehp+=200;
+	}
+	}
+  x=xe;
+  y=ye;
+  xe=xe-1;
+  mousehp--;
+  return true;
+}
+return false;
+}
+
+bool Mouse::down()//向下移动
+{
+	if(maze.m[xe+1][ye]!=gwall)
+{
+		if(shiwu==true)
+	{
+	if(maze.m[xe+1][ye]==gfood)
+	{
+		mousehp+=200;
+	}
+	}
+  x=xe;
+  y=ye;
+  xe=xe+1;
+  mousehp--;
+  return true;
+}
+return false;
+}
+
+bool Mouse::left()//向左移动
+{
+	if(maze.m[xe][ye-1]!=gwall)
+{
+		if(shiwu==true)
+	{
+	if(maze.m[xe][ye-1]==gfood)
+	{
+		mousehp+=200;
+	}
+	}
+  x=xe;
+  y=ye;
+  ye=ye-1;
+  mousehp--;
+  return true;
+}
+return false;
+}
+
+bool Mouse::right()//向右移动
+{
+	if(maze.m[xe][ye+1]!=gwall)
+{  
+		if(shiwu==true)
+	{
+	if(maze.m[xe][ye+1]==gfood)
+	{
+		mousehp+=200;
+	}
+	}
+  x=xe;
+  y=ye;
+  ye=ye+1;
+  mousehp--;
+  return true;
+}
+return false;
+}
+
+
+//------------------迷宫问题队列的结构体---------------------------------
+struct Box
+{int i,j;//方块的位置
+int pre;//本路径中上一方块在队列中的下标
+};
+
+struct QuType
+{
+Box data[MAXSIZE];
+int front,rear;//队头指针和队尾指针
+};
+
+
+//----------------------猫的类------------------------------------
+
+class Cat
+{
+public:
+int xi;
+int yi;
+Cat();
+bool move(int&,int&,int,int);
+}cat;
+
+
+Cat::Cat()//初始化猫的位置
+{xi=1;yi=1;}
+
+bool Cat::move(int &xi,int &yi,int xe,int ye)//搜索抓老鼠的路径并移动一步
+{
+
+int m2[HEIGHT][WIDTH];//复制一个迷宫给猫计算路径
+for(int i=0;i<HEIGHT;i++)
+{   for(int j=0;j<WIDTH;j++)
+    {
+		if(maze.m[i][j]==gwall||maze.m[i][j]==gdoor)  m2[i][j]=1;
+        else  m2[i][j]=0;
+     }
+}
+
+int i,j,find=0,di;
+QuType qu;
+qu.front=qu.rear=-1;
+qu.rear++;
+qu.data[qu.rear].i=xi;qu.data[qu.rear].j=yi;//(xi,yi)进队
+qu.data[qu.rear].pre=-1;
+m2[xi][yi]=-1;//将其赋值为-1，以避免重复搜索
+while(qu.front!=qu.rear&&!find)//队列不为空时且未找到路径时循环
+{ qu.front++;//出队，由于不是环形队列，该出队元素仍在队列中
+i=qu.data[qu.front].i;j=qu.data[qu.front].j;
+
+
+
+if(i==xe&&j==ye)//找到老鼠，反向找到最短路径，并移动一步
+{
+	if(tance==true) return true;//如果此函数值用于探测是否有路径，则不移动
+find=1;//找到老鼠的标志
+     {
+        int k=qu.front,j;
+         do    //反向找到最短路径，将该路径上的方块的pre成员设置成-1
+        {
+			j=k;
+           k=qu.data[k].pre;
+           qu.data[j].pre=-1;
+        }while(k!=0);
+		
+      for(k=1;k<MAXSIZE;k++)
+	   {
+			if(qu.data[k].pre==-1 )//找到路径的第一个位置并把猫的位置修改为这个位置
+            {   		
+				maze.m[xi][yi]=groad;//原来的猫为路
+				xi=qu.data[k].i,yi=qu.data[k].j;
+                maze.m[xi][yi]=gcat;//原来的路为猫
+
+				if(xi==mouse.xe&&yi==mouse.ye)//若猫跟老鼠重叠
+                {
+					if(mousehp>cathp)
+						win=true;
+					else;
+					::end=true;}
+				else;
+				if(shiwu==true)
+				{
+				if(xi==foodx&&yi==foody)//若猫跟食物重叠
+				{cathp+=200;shiwu=false;}
+				else;
+				}	
+                 return true;				
+			}
+        }
+       }
+}
+
+   for(di=0;di<4;di++)//循环扫描每一个方位，把每个可走的方块插入队列中
+   {	   
+	   if(xi-mouse.xe<0)//老鼠在猫下面
+	   {	   
+		   if(yi-mouse.ye>=0)//老鼠在猫左下或正下边，优先走下，再走左
+			   switch(di)
+               {
+                   case 2:i=qu.data[qu.front].i-1;j=qu.data[qu.front].j;break;
+                   case 3:i=qu.data[qu.front].i;j=qu.data[qu.front].j+1;break;
+                   case 0:i=qu.data[qu.front].i+1;j=qu.data[qu.front].j;break;
+                   case 1:i=qu.data[qu.front].i;j=qu.data[qu.front].j-1;break;
+               }
+		   else //老鼠在猫右下，优先走下再右
+			   switch(di)
+               {
+                   case 2:i=qu.data[qu.front].i-1;j=qu.data[qu.front].j;break;
+                   case 1:i=qu.data[qu.front].i;j=qu.data[qu.front].j+1;break;
+                   case 0:i=qu.data[qu.front].i+1;j=qu.data[qu.front].j;break;
+                   case 3:i=qu.data[qu.front].i;j=qu.data[qu.front].j-1;break;
+               }
+	   }
+	   if(xi-mouse.xe==0)//老鼠跟猫在同一行
+	   {
+		   if(yi-mouse.ye>0)//老鼠在猫正左方，优先走左再走上
+			   switch(di)
+               {
+                   case 1:i=qu.data[qu.front].i-1;j=qu.data[qu.front].j;break;
+                   case 2:i=qu.data[qu.front].i;j=qu.data[qu.front].j+1;break;
+                   case 3:i=qu.data[qu.front].i+1;j=qu.data[qu.front].j;break;
+                   case 0:i=qu.data[qu.front].i;j=qu.data[qu.front].j-1;break;
+               }
+		   else//老鼠在猫正右方，优先走右再走上
+			   switch(di)
+               {
+                   case 1:i=qu.data[qu.front].i-1;j=qu.data[qu.front].j;break;
+                   case 0:i=qu.data[qu.front].i;j=qu.data[qu.front].j+1;break;
+                   case 3:i=qu.data[qu.front].i+1;j=qu.data[qu.front].j;break;
+                   case 2:i=qu.data[qu.front].i;j=qu.data[qu.front].j-1;break;
+               }
+	   }
+	   else//老鼠在猫上面
+	   {
+		   if(yi-mouse.ye>0)//老鼠在猫左上，优先走上再走左
+			   switch(di)
+               {
+                   case 0:i=qu.data[qu.front].i-1;j=qu.data[qu.front].j;break;
+                   case 3:i=qu.data[qu.front].i;j=qu.data[qu.front].j+1;break;
+                   case 2:i=qu.data[qu.front].i+1;j=qu.data[qu.front].j;break;
+                   case 1:i=qu.data[qu.front].i;j=qu.data[qu.front].j-1;break;
+               }
+		   else//老鼠在猫右上，优先走上再走右
+			   switch(di)
+               {
+                   case 0:i=qu.data[qu.front].i-1;j=qu.data[qu.front].j;break;
+                   case 1:i=qu.data[qu.front].i;j=qu.data[qu.front].j+1;break;
+                   case 2:i=qu.data[qu.front].i+1;j=qu.data[qu.front].j;break;
+                   case 3:i=qu.data[qu.front].i;j=qu.data[qu.front].j-1;break;
+               }
+	   
+	   }
+	     
+    if(m2[i][j]==0)
+     {
+		 qu.rear++;          //将该相邻方块插入到队列中
+         qu.data[qu.rear].i=i;qu.data[qu.rear].j=j;
+         qu.data[qu.rear].pre=qu.front;//指向路径中上一个方块的下标
+         m2[i][j]=-1;          //赋值为-1，避免重复搜索
+     }
+   }
+   }
+return false;
+}
+
+
+void change()//老鼠走引起的数组变化
+{
+	if(shiwu==false)//如果没食物，这是给生存模式用的
+	{
+         if(maze.m[mouse.xe][mouse.ye]==gdoor)
+			 {::end=true;win=true;}//找到出口
+	}
+	
+	else //有食物
+		{
+			if(maze.m[mouse.xe][mouse.ye]==gfood)
+			shiwu=false;
+	}
+if(mouse.xe==cat.xi&&mouse.ye==cat.yi)
+{
+	if(mousehp>cathp)
+		win=true;
+	else;
+	::end=true;}
+else//否则为正常的走路
+{
+	if(dong==false)
+	{
+	   maze.m[mouse.xe][mouse.ye]=gmouse;//原来的路为老鼠
+       maze.m[x][y]=groad;//原来的老鼠为路
+	}
+	else//如果是挖洞,扣体力
+	{
+		mousehp-=30;
+		maze.m[mouse.xe][mouse.ye]=gmouse;
+		maze.m[x][y]=gwall;
+		dongshu++;//老鼠挖的洞的数量加1
+		dong=false;
+	}
+}
+}
+
+bool movable(int xi,int yi,int xe,int ye)//检验两个坐标间是否有通路
+{
+	::tance=true;
+	bool tan=cat.move(xi,yi,xe,ye);
+	::tance=false;
+	return tan;
+}
+
+
+void initmaze(int height,int width)//初始化迷宫
+{
+//----------------随机生成墙---------------------------------
+	int s[5]={groad,groad,groad,gwall,gwall};//用于随机生成墙
+	
+   for(int i=0;i<height;i++)
+   for(int j=0;j<width;j++)
+    {    
+		if(i==0||i==height-1||j==0||j==width-1)
+		 maze.m[i][j]=gwall;
+	     else
+               maze.m[i][j]=s[rand()%5];
+     }
+
+//------------------随机生成门的坐标----------------------------
+   int d[8]={1,2,height-2,height-3,1,2,width-2,width-3};//给出口用
+ while(true)
+ {
+   maze.dx=d[rand()%4];maze.dy=d[rand()%4+4];//把门随机生成在4个角落
+   if(maze.m[maze.dx][maze.dy]==groad)
+   {
+     maze.m[maze.dx][maze.dy]=gdoor;//让门出线在迷宫
+	 break;}
+   else
+	  continue;
+ }
+  //----------------随机生成猫的坐标--------------------------
+ if(tw==true)
+ {
+  while(true)
+  {
+  cat.xi=rand()%(height-2)+1;cat.yi=rand()%(width-2)+1;
+  if(maze.m[cat.xi][cat.yi]==groad) {maze.m[cat.xi][cat.yi]=gcat;break;}//让猫出线在迷宫
+  else continue;
+  }
+ }
+ else {cat.xi=100;cat.yi=100;}
+
+  //-------------随机生成老鼠的坐标----------------------
+  int lao=0;//老鼠生成的次数
+  while(true)
+  {   lao++;
+  if(lao>150) {break;initmaze(height,width);}//防止进入死循环
+	  mouse.xe=rand()%(height-2)+1;mouse.ye=rand()%(width-2)+1;
+	   if((abs(mouse.xe-maze.dx)+abs(mouse.ye-maze.dy)) < ((height+width)/2) || (abs(mouse.xe-cat.xi)+abs(mouse.ye-cat.yi)) < ((height+width)/6 )) continue;//如果老鼠距离猫或者门太近就循环
+	  else  {maze.m[mouse.xe][mouse.ye]=gmouse;break;}//让老鼠出现在迷宫
+  }
+  
+};
+
+void showtitle()//------------------------------------显示主界面的函数------------------------------------
+{
+cout<<"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n";
+cout<<"┃                                                          ┃\n";
+cout<<"┃                     小 老 鼠 走 迷 宫                    ┃\n";
+cout<<"┃                                                          ┃\n";
+cout<<"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n";
+char xuan;
+cout<<"模式目录："<<endl<<"1.老鼠走迷宫"<<endl<<"2.老鼠大逃亡"<<endl;
+cout<<"3.生存模式"<<endl<<"4.退出"<<endl;
+cout<<"选择:";
+xuan=getch();
+switch(xuan)
+{
+case '1':choosemaze();break;
+case '2':{tw=true;choosemaze();break;}
+case '3':shengcun();break;
+case '4':exit(3);break;
+default:system("cls");showtitle();
+
+}
+}
+
+void taowang(int h,int w)
+{
+	tw=true;//逃亡开关为真
+	system("cls");
+	 HANDLE hOutput;//局部覆盖原理
+    COORD coord={0,0};
+    hOutput=GetStdHandle(STD_OUTPUT_HANDLE);
+
+	initmaze(h,w);//先初始化一次迷宫
+
+	while(   !movable(cat.xi,cat.yi,mouse.xe,mouse.ye)   ||    !(movable(maze.dx,maze.dy,mouse.xe,mouse.ye)) )
+	initmaze(h,w);//如果没有路径给猫抓老鼠或没路径给老鼠逃跑就重新初始化迷宫
+	
+	maze.display(h,w);//第一次显示迷宫
+	if(chuangguan==true)//如果是闯关模式
+	{
+		cout<<"关卡:"<<h-9<<"    猫的速度:"<<h-9<<"     "<<endl;
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+		setcolor(12,0);cout<<char(gcat);
+		setcolor(7,0);cout<<"是猫，";
+		setcolor(9,0);cout<<char(gmouse);
+		setcolor(7,0);cout<<"是老鼠，";
+		setcolor(11,0);cout<<char(gdoor);
+		setcolor(7,0);cout<<"是出口";
+	}
+	else
+	{
+		cout<<"猫的速度:"<<h-9<<"     "<<endl;
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+		setcolor(12,0);cout<<char(gcat);
+		setcolor(7,0);cout<<"是猫，";
+		setcolor(9,0);cout<<char(gmouse);
+		setcolor(7,0);cout<<"是老鼠，";
+		setcolor(11,0);cout<<char(gdoor);
+		setcolor(7,0);cout<<"是出口";
+	}
+	
+	int ch;
+	bool flag = false;//用来标识键盘输入的操作可不可以用
+
+int lastTime=0;
+
+	while(true)
+	{		
+       if(::end==true) break;
+		ch = getch();
+		if(ch==114) {system("cls");chuangguan=false;return showtitle();}
+		while(ch != 0xE0) ch = getche();
+		ch = getche();		
+		switch(ch)
+		{
+		case 72 : flag =mouse.up();change(); break;
+		case 75 : flag =mouse.left(); change();break;
+		case 80 : flag =mouse.down(); change();break;
+		case 77 : flag =mouse.right();change();break;
+		}
+
+		while((!kbhit() || flag)    &&!::end)//kbhit()检查当前是否有键盘输入，若有则返回一个非0值;即没有输入或者输入了可以执行的方向都会继续移动
+		{
+			int now=clock()/(900-h*10);
+			flag = false;
+			if(now-lastTime>0)
+			{
+			       cat.move(cat.xi,cat.yi,mouse.xe,mouse.ye);//猫向前走一步
+				   lastTime=now;
+			}
+
+			SetConsoleCursorPosition(hOutput, coord);
+			maze.display(h,w);
+			if(chuangguan==true)//如果是闯关模式
+	{
+		cout<<"关卡:"<<h-9<<"    猫的速度:"<<h-9<<"     "<<endl;
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+	}
+	else
+	{
+		cout<<"猫的速度:"<<h-9<<"     "<<endl;
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+	}
+			Sleep(10); 
+		}
+	}
+if(win==true) 
+	{   
+		::end=false;
+		win=false;
+		if(chuangguan==true)//如果是闯关模式
+		{
+			if(h+1<39)
+			{
+				cout<<"你赢了，按任意键进入下一关"<<endl;system("pause"); return taowang(h+1,w+1);
+			}
+			else 
+			{
+				cout<<"你闯过了所有关卡，按任意键返回主菜单"<<endl;system("pause");system("cls");return showtitle();
+			}
+		}
+		else//若不是闯关模式
+		{
+			cout<<"老鼠走到了出口，按任意键返回主菜单";system("pause");system("cls");return showtitle();
+		}
+}
+
+else 
+	cout<<"老鼠被吃掉了，按任意键返回主菜单"<<endl;::end=false;
+system("pause");
+tw=false;//逃亡开关结束
+system("cls");
+return showtitle();
+}
+
+void zoumigong(int h,int w)//-------------------------------走迷宫模式-----------------------------
+{
+	system("cls");
+
+    HANDLE hOutput;//局部覆盖原理
+    COORD coord={0,0};
+    hOutput=GetStdHandle(STD_OUTPUT_HANDLE);
+
+	initmaze(h,w);//先初始化一次迷宫
+
+	while(   !(movable(maze.dx,maze.dy,mouse.xe,mouse.ye)) )
+	initmaze(h,w);//如果没有路径给老鼠逃跑就重新初始化迷宫
+		
+	maze.display(h,w);//第一次显示迷宫
+	if(chuangguan==true)//如果是闯关模式
+	{
+		cout<<"关卡:"<<h-9<<"        "<<endl;
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+		setcolor(9,0);cout<<char(gmouse);
+		setcolor(7,0);cout<<"是老鼠，";
+		setcolor(11,0);cout<<char(gdoor);
+		setcolor(7,0);cout<<"是食物";
+	}
+	else
+	{
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+		setcolor(9,0);cout<<char(gmouse);
+		setcolor(7,0);cout<<"是老鼠，";
+		setcolor(11,0);cout<<char(gdoor);
+		setcolor(7,0);cout<<"是食物";
+	}
+	
+	int ch;
+	bool flag = false;//用来标识键盘输入的操作可不可以用
+
+
+	while(true)
+	{
+		
+        if(::end==true) break;
+		ch = getch();
+		if(ch==114) {system("cls");chuangguan=false;return showtitle();}
+		while(ch != 0xE0) ch = getche();
+		ch = getche();
+		switch(ch)
+		{
+		case 72 : flag =mouse.up();change(); break;
+		case 75 : flag =mouse.left(); change();break;
+		case 80 : flag =mouse.down(); change();break;
+		case 77 : flag =mouse.right();change();break;
+		}
+
+		while(/*(!kbhit() || flag)   && */ flag &&  !::end)//kbhit()检查当前是否有键盘输入，若有则返回一个非0值;即没有输入或者输入了可以执行的方向都会继续移动
+		{
+			flag = false;
+			SetConsoleCursorPosition(hOutput, coord);
+			maze.display(h,w);
+			if(chuangguan==true)//如果是闯关模式
+	{
+		cout<<"关卡:"<<h-9<<"        "<<endl;
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+	}
+	else
+	{
+		cout<<"按方向键开始游戏，按r键可以返回主菜单"<<endl;
+	}
+		}
+	}
+if(win==true) 
+	{
+		::end=false;
+		win=false;
+	    if(chuangguan==true)//如果是闯关模式
+		{
+			if(h+1<39)//如果有下一关
+			{
+				cout<<"你赢了，按任意键进入下一关"<<endl;system("pause");system("cls");return zoumigong(h+1,w+1);
+			}
+			else 
+				{
+					cout<<"你闯过了所有关卡，按任意键返回主菜单"<<endl;system("pause");system("cls");return showtitle();
+			}
+		}
+		else//若不是闯关模式
+			cout<<"老鼠找到了食物，按任意键返回主菜单"<<endl;system("pause");system("cls");return showtitle();
+}
+
+}
+
+void choosemaze()//选择是闯关迷宫还是自己输入迷宫大小
+{
+	system("cls");
+	if(tw==true)
+	{
+cout<<"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n";
+cout<<"┃                                                          ┃\n";
+cout<<"┃                       老 鼠 大 逃 亡                     ┃\n";
+cout<<"┃                                                          ┃\n";
+cout<<"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n";
+cout<<"说明:这个模式会有猫一直追着老鼠，被猫抓到就输，走到出口就赢，\n关卡数越高，猫的速度越快，迷宫越来越大，且迷宫是随机的"<<endl;
+	}
+	else
+	{
+cout<<"┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓\n";
+cout<<"┃                                                          ┃\n";
+cout<<"┃                       老 鼠 走 迷 宫                     ┃\n";
+cout<<"┃                                                          ┃\n";
+cout<<"┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n";
+cout<<"说明:此模式只有食物和老鼠，老鼠拿到食物就赢"<<endl;
+	}
+char xuan;
+	cout<<"请选择模式:\n1.闯关模式\n2.自定义迷宫大小模式\n3.返回"<<endl;
+	char ch=0;
+	ch=getch();
+	//cin>>ch;
+	if(ch=='1')
+		{
+			if(tw==true)//如果选择的是老鼠逃亡
+			{
+				chuangguan=true;taowang(10,10);chuangguan=false;
+			}
+			else//如果选择的是老鼠走迷宫
+			{
+				chuangguan=true;zoumigong(10,10);chuangguan=false;
+			}			
+		}
+	else if(ch=='2')
+	{
+		cout<<"请分别输入迷宫的长和宽(长和宽均大于等于10，小于等于39):"<<endl;
+		int chang=0,kuan=0;
+		cin>>chang>>kuan;
+		if(chang>=10&&chang<=39 && kuan>=10 && kuan<=39)
+		{
+			if(tw==true)//如果选择的是逃亡
+			{
+				return taowang(chang,kuan);
+			}
+			else//如果选择的是走迷宫
+				return zoumigong(chang,kuan);
+		}
+		else//如果输入的不对，输入对才能出循环
+		{
+			while(!(chang>=10&&chang<=39 && kuan>=10 && kuan<=39))
+			{
+			cout<<"输入有误，请重新输入:"<<endl;
+			cin>>chang>>kuan;
+			}
+			if(tw==true)//如果选择的是逃亡
+			{
+				return taowang(chang,kuan);
+			}
+			else//如果选择的是走迷宫
+				return zoumigong(chang,kuan);
+		}
+	}
+	else if(ch=='3') {system("cls");return showtitle();}
+	else return choosemaze();
+		
+}
+
+void shengcun()
+{
+	system("cls");
+
+	HANDLE hOutput;//局部覆盖原理
+    COORD coord={0,0};
+    hOutput=GetStdHandle(STD_OUTPUT_HANDLE);
+
+	cathp=700;mousehp=500;
+
+cout<<"    说明：猫的体力为0或者猫的体力低于老鼠时被反杀或者猫被困住时获得胜利，老鼠体力低于猫时被捉到或者老鼠体力为0或自己把自己困住时失败，迷宫中每隔一段时间会随机生成食物，老鼠和猫均可以吃食物恢复200体力，猫和老鼠每走一步都会消耗1点体力，猫体力越高速度越快，老鼠在体力大与30时可以挖洞，洞相当于墙，每挖一格消耗30体力"<<endl;
+cout<<"按任意键进入游戏"<<endl;system("pause");system("cls");
+
+for(int i=0;i<39;i++)
+   for(int j=0;j<39;j++)
+    {    if(i==0||i==39-1||j==0||j==39-1)
+	     maze.m[i][j]=gwall;
+         else
+		 {
+			 if(i%5>2 && j%6>3) maze.m[i][j]=gwall;
+			 else
+             maze.m[i][j]=groad;
+         }
+
+     }
+cat.xi=cat.yi=2;//初始化基本参数
+mouse.xe=mouse.ye=37;
+dongshu=0;
+
+maze.m[cat.xi][cat.yi]=gcat;
+maze.m[mouse.xe][mouse.ye]=gmouse;
+
+cout<<"猫的体力:"<<cathp<<"      老鼠的体力:"<<mousehp<<"            "<<endl;
+
+maze.display(39,39);//显示迷宫
+
+cout<<"按任意方向键开始游戏，按r键可以返回主菜单，按s键可以挖洞"<<endl;
+		setcolor(12,0);cout<<char(gcat);
+		setcolor(7,0);cout<<"是猫，";
+		setcolor(9,0);cout<<char(gmouse);
+		setcolor(7,0);cout<<"是老鼠，";
+		setcolor(11,0);cout<<char(gfood);
+		setcolor(7,0);cout<<"是食物"<<endl;
+
+
+int ch;
+	bool flag = false;//用来标识键盘输入的操作可不可以用
+
+int lastTime=0;//给猫走用的计时
+int lastTimef=0;//给食物生成周期用
+
+bool wulu=false;//true表示无路可走
+	while(true)
+	{
+	   
+		//--------------食物生成周期--------------------
+			int fnow=clock()/15000;//15秒生成一次 
+			if(shiwu==false)//如果迷宫没有食物			
+			{
+                if(fnow-lastTimef>0)
+	             	{
+						foodx=0;foody=0;
+		                	while(maze.m[foodx][foody]!=groad)//不是路的时候循环
+		                	{
+				               foodx=rand()%37+1;foody=rand()%37+1;
+							   //cout<<"aaa";
+			                }
+			               maze.m[foodx][foody]=gfood;
+			               shiwu=true;
+		            }
+		          lastTimef=fnow;
+		
+		 }
+       //-----------------------------------------------
+
+		if(cathp<=0 || mousehp<=0 ) //一方体力为0则结束
+			{
+				if(cathp<=0)
+				{
+					win=true;
+				}
+				else;
+				::end=true;
+		}
+       if(::end==true) break;
+	   
+		ch = getch();
+		if(ch==114||ch==98) {system("cls");chuangguan=false;return showtitle();}
+		if(ch==83||ch==115)  
+		{if(mousehp>30)
+		{dong=true;flag=true;maze.m[mouse.xe][mouse.ye]=gwall;}
+		}
+
+		while(ch != 0xE0) ch = getche();
+
+		
+
+		ch = getche();
+
+		switch(ch)
+		{
+		case 72 : flag =mouse.up();change(); break;
+		case 75 : flag =mouse.left(); change();break;
+		case 80 : flag =mouse.down(); change();break;
+		case 77 : flag =mouse.right();change();break;
+		}
+
+		while((!kbhit() || flag)    && !::end)//kbhit()检查当前是否有键盘输入，若有则返回一个非0值;即没有输入或者输入了可以执行的方向都会继续移动
+		{
+			int now=clock()/(((600-cathp)>100)?(600-cathp):100);//猫体力越高速度越快，但是有上限
+			flag = false;
+			if(now-lastTime>0)
+			{   
+				
+				if(!movable(cat.xi,cat.yi,mouse.xe+1,mouse.ye)&&!movable(cat.xi,cat.yi,mouse.xe-1,mouse.ye)&&!movable(cat.xi,cat.yi,mouse.xe,mouse.ye+1)&&!movable(cat.xi,cat.yi,mouse.xe,mouse.ye-1))//如果无路可走
+					{wulu=true;::end=true;}//有分老鼠把自己困住和把猫困住的情况
+				else//如果有路可走
+				;
+					
+				if(shiwu==true)
+				{
+					if(mousehp>cathp)//如果猫体力小于老鼠而有食物，如果食物近就吃食物，老鼠离猫近就逃
+					{
+						if(abs(cat.xi-mouse.xe)+abs(cat.yi-mouse.ye)<5)//如果猫离老鼠很近，逃
+							{
+						      int tx=0,ty=0;//逃跑用的坐标
+						      int cishu=0;
+						      while((abs(tx-mouse.xe)+abs(ty-mouse.ye)<50 || maze.m[tx][ty]!=groad )&& cishu<100 )//如果坐标理老鼠很近就循环，或者循环次数太多就跳出循环
+						        {
+						        	tx=rand()%37+1;ty=rand()%37+1;cishu++;
+					         	}
+					           	if(cat.move(cat.xi,cat.yi,tx,ty)) cathp--;//猫逃一步
+						      else ;
+					        }
+						else//否则去吃食物
+							if(cat.move(cat.xi,cat.yi,foodx,foody)) cathp--;//猫向前走一步
+					}
+					else//猫体力大于老鼠时
+					{
+					if(abs(cat.xi-mouse.xe)+abs(cat.yi-mouse.ye)<5)//如果猫离老鼠很近，先抓老鼠
+			           if(cat.move(cat.xi,cat.yi,mouse.xe,mouse.ye)) cathp--;//猫向前走一步扣一点体力
+					   else;
+					else//否则优先吃食物
+						{
+							
+						if(cat.move(cat.xi,cat.yi,foodx,foody)) cathp--;//猫向前走一步
+						else ;
+					     }
+				     }
+				}
+				else//如果没有食物
+				{
+					if(cathp<mousehp)//如果猫的体力小于老鼠的，猫就逃跑
+					{
+						int tx=0,ty=0;//逃跑用的坐标
+						int cishu=0;
+						while((abs(tx-mouse.xe)+abs(ty-mouse.ye)<50 || maze.m[tx][ty]!=groad )&& cishu<100 )//如果坐标理老鼠很近就循环，或者循环次数太多就跳出循环
+						{
+							tx=rand()%37+1;ty=rand()%37+1;cishu++;
+						}
+						if(cat.move(cat.xi,cat.yi,tx,ty)) cathp--;//猫逃一步
+						else ;
+					}
+					else//如果猫的体力大于老鼠则追老鼠
+					{
+						if(cat.move(cat.xi,cat.yi,mouse.xe,mouse.ye)) cathp--;//猫向前走一步扣一点体力
+					   else;
+					}
+				}
+
+
+				   lastTime=now;
+			}
+
+			SetConsoleCursorPosition(hOutput, coord);
+			cout<<"猫的体力:"<<cathp<<"      老鼠的体力:"<<mousehp<<"            "<<endl;
+			maze.display(39,39);
+			cout<<endl;
+			Sleep(10); 
+		}
+}
+shiwu=false;
+
+if(wulu==true)//假如老鼠和猫被隔开
+{
+	bool shukun=true;//如果开启则表示老鼠被困住
+	
+		if(movable(mouse.xe,mouse.ye,mouse.xe+(dongshu-2)/2+2,mouse.ye)) shukun=false;//依次检测老鼠在当前洞数下如果被困住自己则不能去到的最近的四个地方(考虑了地图因素)
+		if(movable(mouse.xe,mouse.ye,mouse.xe-(dongshu-2)/2-2,mouse.ye)) shukun=false;
+		if(movable(mouse.xe,mouse.ye,mouse.xe,mouse.ye+(dongshu-2)/2+2)) shukun=false;
+		if(movable(mouse.xe,mouse.ye,mouse.xe,mouse.ye-(dongshu-2)/2-2)) shukun=false;
+	if(shukun==true)//如果是老鼠困住自己
+		win=false;//则输
+	else//否则是困住猫
+		win=true;
+}
+
+if(win==true) 
+	{   
+		::end=false;
+		win=false;
+		if(wulu==true)//如果是猫无路可走赢了
+		{
+			wulu=false;
+			cout<<"猫被困住了，老鼠反杀成功                     "<<endl;
+		}
+		else
+			if(cathp<=0)//如果是猫耗尽体力输了
+			{
+				cout<<"猫体力耗尽，老鼠赢了                   "<<endl;
+			}
+			else
+		{
+			cout<<"你反杀了猫                 "<<endl;
+		}
+     while(getch()!='r')
+{cout<<"按r键返回菜单";}
+	 system("cls");return showtitle();
+      }
+
+else //老鼠输了
+	if(mousehp<=0)
+	{
+		cout<<"老鼠体力耗尽，猫赢了               "<<endl;
+	}
+	else if(wulu==true)//如果是老鼠困住自己
+		cout<<"老鼠把自己困住了饿死了             "<<endl;
+	else
+	
+	cout<<"老鼠被吃掉了               "<<endl;
+	
+::end=false;
+while(getch()!='r')
+{cout<<"按r键返回菜单";}
+system("cls");
+return showtitle();
+}
+
+
+int main()
+{
+   srand(unsigned(time(NULL)));
+		showtitle();
+	return 0;
+}
